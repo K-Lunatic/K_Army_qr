@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>예약 음악 플레이어 (JSON 저장/불러오기)</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #log { white-space: pre-line; border: 1px solid #ccc; padding: 10px; height: 150px; overflow-y: auto; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h2>🎧 예약 음악 플레이어</h2>
+
+  <p>로컬 음악 선택 (여러 개): <input type="file" id="fileInput" accept="audio/*" multiple></p>
+
+  <p>시작 시각 (시:분:초):<br>
+    <input type="number" id="hour" value="15" min="0" max="23"> :
+    <input type="number" id="minute" value="30" min="0" max="59"> :
+    <input type="number" id="second" value="0" min="0" max="59">
+  </p>
+
+  <p>총 재생 시간 (초): <input type="number" id="totalDuration" value="30"></p>
+
+  <button onclick="schedulePlayback()">⏱ 예약 시작</button>
+  <button onclick="saveSettingsAsJSON()">💾 JSON 저장</button>
+  <input type="file" id="loadJsonInput" accept=".json" style="display:none" onchange="loadSettingsFromJSON(this)">
+  <button onclick="document.getElementById('loadJsonInput').click()">📂 JSON 불러오기</button>
+
+  <h3>남은 시간: <span id="timeLeft">-</span>초</h3>
+  <div id="log"></div>
+
+  <audio id="player" preload="auto"></audio>
+
+  <script>
+    let countdownTimer = null;
+    let matchedFiles = [];
+
+    function log(msg) {
+      console.log(msg);
+      document.getElementById('log').textContent += msg + '\n';
+    }
+
+    function shuffle(array) {
+      const arr = array.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function startCountdown(seconds) {
+      const display = document.getElementById('timeLeft');
+      display.textContent = seconds;
+      clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        seconds--;
+        display.textContent = seconds;
+        if (seconds <= 0) clearInterval(countdownTimer);
+      }, 1000);
+    }
+
+    function schedulePlayback() {
+      const files = matchedFiles.length ? matchedFiles : document.getElementById('fileInput').files;
+      if (!files.length) {
+        alert("음악 파일을 선택해주세요.");
+        return;
+      }
+
+      const musicFiles = Array.from(files);
+      const hour = +document.getElementById('hour').value;
+      const minute = +document.getElementById('minute').value;
+      const second = +document.getElementById('second').value;
+      const totalDuration = +document.getElementById('totalDuration').value;
+
+      const now = new Date();
+      const target = new Date();
+      target.setHours(hour, minute, second, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+
+      const delay = target - now;
+      log(`⏳ ${Math.round(delay / 1000)}초 후에 재생이 시작됩니다.`);
+
+      setTimeout(() => {
+        log("🎵 재생 시작");
+        startCountdown(totalDuration);
+        playSequence(totalDuration, shuffle(musicFiles));
+      }, delay);
+    }
+
+    function playSequence(remainingTime, queue) {
+      if (remainingTime <= 0) {
+        log("✅ 전체 재생 완료");
+        return;
+      }
+
+      if (queue.length === 0) {
+        log("🔁 음악이 부족하여 다시 셔플합니다.");
+        queue = shuffle(document.getElementById('fileInput').files);
+      }
+
+      const track = queue.shift();
+      const player = document.getElementById('player');
+      const url = URL.createObjectURL(track);
+      player.src = url;
+
+      player.onloadedmetadata = () => {
+        const playTime = Math.min(player.duration || 5, remainingTime);
+        player.play();
+        log(`▶ ${track.name} 재생 (${playTime.toFixed(2)}초)`);
+
+        setTimeout(() => {
+          player.pause();
+          URL.revokeObjectURL(url);
+          log(`⏹️ ${track.name} 정지`);
+          playSequence(remainingTime - playTime, queue);
+        }, playTime * 1000);
+      };
+    }
+
+    function saveSettingsAsJSON() {
+      const files = document.getElementById('fileInput').files;
+      if (files.length === 0) {
+        alert("음악 파일을 먼저 선택해주세요.");
+        return;
+      }
+
+      const fileNames = Array.from(files).map(f => f.name);
+      const hour = +document.getElementById('hour').value;
+      const minute = +document.getElementById('minute').value;
+      const second = +document.getElementById('second').value;
+      const totalDuration = +document.getElementById('totalDuration').value;
+
+      const data = {
+        startTime: { hour, minute, second },
+        totalDuration,
+        musicFiles: fileNames
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'music_settings.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      log("💾 설정이 JSON 파일로 저장되었습니다.");
+    }
+
+    function loadSettingsFromJSON(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          const { startTime, totalDuration, musicFiles } = data;
+
+          document.getElementById('hour').value = startTime.hour;
+          document.getElementById('minute').value = startTime.minute;
+          document.getElementById('second').value = startTime.second;
+          document.getElementById('totalDuration').value = totalDuration;
+
+          const allFiles = Array.from(document.getElementById('fileInput').files);
+          matchedFiles = allFiles.filter(file => musicFiles.includes(file.name));
+          const matchedNames = matchedFiles.map(f => f.name);
+
+          log("📂 JSON 설정 불러옴");
+          log(`🎶 매칭된 파일 ${matchedFiles.length}개: ${matchedNames.join(', ')}`);
+
+          if (matchedFiles.length < musicFiles.length) {
+            const missing = musicFiles.filter(name => !matchedNames.includes(name));
+            log(`⚠️ 누락된 파일: ${missing.join(', ')}`);
+          }
+        } catch (err) {
+          alert("잘못된 JSON 파일입니다.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
