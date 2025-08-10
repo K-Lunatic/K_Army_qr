@@ -33,19 +33,21 @@
         const csvFilePath = 'data.csv';
 
 
-        fetch(csvFilePath)
-            .then(response => response.text())
-            .then(data => {
-                const parsedData = Papa.parse(data, {
-                    header: false,
-                    dynamicTyping: true,
-                    skipEmptyLines: true
-                });
-                createTable(parsedData.data);
-            })
-            .catch(error => {
-                console.error('CSV 파일 로드 실패:', error);
+    fetch(csvFilePath)
+        .then(response => response.arrayBuffer())
+        .then(buffer => {
+            const decoder = new TextDecoder("euc-kr"); // CSV 인코딩에 맞춰 변경
+            const text = decoder.decode(buffer);
+            const parsedData = Papa.parse(text, {
+                header: false,
+                dynamicTyping: true,
+                skipEmptyLines: true
             });
+            createTable(parsedData.data);
+        })
+        .catch(error => {
+            console.error('CSV 파일 로드 실패:', error);
+        });
 
 
         function createTable(csvData) {
