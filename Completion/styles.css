@@ -69,6 +69,7 @@ td {
     border: 1px solid #ddd;
     font-size: 1.2rem;
     color: #333;
+    white-space: nowrap;
 }
 
 tr:nth-child(even) {
@@ -141,4 +142,5 @@ tr:last-child td { border-bottom: 2px solid black; }
         font-size: 1.5rem;
     }
 }
+
 
