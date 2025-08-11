@@ -34,20 +34,29 @@
 
 
     fetch(csvFilePath)
-        .then(response => response.arrayBuffer())
-        .then(buffer => {
-            const decoder = new TextDecoder("euc-kr"); // CSV 인코딩에 맞춰 변경
-            const text = decoder.decode(buffer);
-            const parsedData = Papa.parse(text, {
-                header: false,
-                dynamicTyping: true,
-                skipEmptyLines: true
-            });
-            createTable(parsedData.data);
-        })
-        .catch(error => {
-            console.error('CSV 파일 로드 실패:', error);
+    .then(response => response.arrayBuffer())
+    .then(buffer => {
+        // 1차: UTF-8로 시도
+        let decoder = new TextDecoder("utf-8");
+        let text = decoder.decode(buffer);
+
+        // 2차: 한글 깨짐 감지 후 EUC-KR 재시도
+        // '�' 문자가 많이 포함되면 인코딩 문제라고 판단
+        if ((text.match(/�/g) || []).length > 5) {
+            decoder = new TextDecoder("euc-kr");
+            text = decoder.decode(buffer);
+        }
+
+        const parsedData = Papa.parse(text, {
+            header: false,
+            dynamicTyping: true,
+            skipEmptyLines: true
         });
+        createTable(parsedData.data);
+    })
+    .catch(error => {
+        console.error('CSV 파일 로드 실패:', error);
+    });
 
 
         function createTable(csvData) {
