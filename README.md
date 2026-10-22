@@ -1,0 +1,29 @@
+# K_Army_qr · 행사 안내 웹 화면
+
+QR로 접속할 안내 링크와 CSV 기반 행사 배치도 화면을 구성한 정적 웹 프로젝트입니다.
+
+## 구성
+
+| 파일 | 역할 |
+|---|---|
+| [index.html](index.html) | 안내 링크로 이동 |
+| [Completion/index.html](Completion/index.html) | CSV를 표로 표시하고 이름·번호 검색 결과 강조 |
+| [Completion/styles.css](Completion/styles.css) | 배치도 스타일 |
+
+**기술:** HTML · CSS · JavaScript · Papa Parse
+
+## 로컬 확인
+
+Python 3가 있다면 저장소 루트에서 실행합니다.
+
+```bash
+python3 -m http.server 8000
+```
+
+`http://localhost:8000/Completion/`에서 배치도를 확인합니다. 루트 주소는 외부 안내 링크로 즉시 이동하므로 배치도 확인에는 위 경로를 사용합니다.
+
+## 자료 범위
+
+배치도는 CSV 파일을 읽습니다. 실제 행사 참가자의 이름·번호나 안내 대상 링크가 포함되어 있다면 공개 허용 범위를 확인하고, 포트폴리오 데모에서는 가상 데이터로 교체해야 합니다. 이 문서 정리에서는 CSV 본문을 읽거나 수정하지 않았습니다.
+
+CSV 로딩과 검색 강조, 작은 화면에서의 표 표시를 확인하세요. 외부 링크 유효성과 실제 행사 운영 결과는 검증하지 않았습니다.
